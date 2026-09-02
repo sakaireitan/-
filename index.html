@@ -19,8 +19,8 @@
         label { display: block; margin-bottom: 4px; font-weight: bold; font-size: 12px; color: #555; }
         .time-inputs { display: flex; align-items: center; gap: 8px; }
         input[type="time"], input[type="text"] { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; background-color: #fafafa; }
-        button.submit-btn { width: 100%; padding: 12px; background-color: #3498db; color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; }
-        button.submit-btn:active { background-color: #2980b9; }
+        button.submit-btn { width: 100%; padding: 12px; background-color: #3498db; color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        button.submit-btn:active { background-color: #2980b9; transform: scale(0.98); }
         .week-nav { display: flex; overflow-x: auto; gap: 8px; margin-bottom: 15px; padding-bottom: 5px; scrollbar-width: none; }
         .week-nav::-webkit-scrollbar { display: none; }
         .date-btn { flex-shrink: 0; padding: 8px 12px; border-radius: 20px; border: 1px solid #ddd; background: #fff; font-size: 13px; font-weight: bold; cursor: pointer; color: #555; }
@@ -31,34 +31,39 @@
         .time-label { width: 50px; text-align: right; padding-right: 8px; color: #95a5a6; font-size: 11px; font-weight: bold; border-right: 1px solid #f0f0f0; background-color: #fbfcfc; transform: translateY(-6px); }
         .task-layer { position: absolute; top: 0; left: 50px; right: 0; bottom: 0; pointer-events: none; }
         
-        /* タスクブロック（タップ可能にするため cursor: pointer を追加） */
-        .task-block { position: absolute; border-radius: 6px; padding: 4px 8px; font-size: 12px; line-height: 1.3; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.15); border-left-width: 4px; border-left-style: solid; pointer-events: auto; transition: all 0.2s ease; cursor: pointer; }
+        .task-block { 
+            position: absolute; border-radius: 6px; padding: 4px 6px; font-size: 12px; 
+            line-height: 1.3; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+            border-left-width: 4px; border-left-style: solid; pointer-events: auto; cursor: pointer;
+        }
         .task-block:active { opacity: 0.7; }
-        .task-time { font-size: 10px; font-weight: bold; opacity: 0.8; margin-bottom: 2px; }
-        .task-title { font-weight: bold; word-break: break-all; }
+        .task-time { font-size: 10px; font-weight: bold; opacity: 0.8; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .task-title { font-weight: bold; word-break: break-all; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
 
-        /* --- ポップアップ（モーダル）用のデザイン --- */
+        /* --- モーダル（ポップアップ）のデザイン --- */
         .modal-overlay {
-            display: none; /* 初期状態は非表示 */
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.5); z-index: 1000;
             justify-content: center; align-items: center;
         }
         .modal-content {
-            background: #fff; padding: 20px; border-radius: 12px; width: 85%; max-width: 320px;
+            background: #fff; padding: 20px; border-radius: 12px; width: 90%; max-width: 350px;
             position: relative; box-shadow: 0 10px 25px rgba(0,0,0,0.2);
         }
         .modal-close {
             position: absolute; top: 12px; right: 15px; font-size: 20px; font-weight: bold;
-            cursor: pointer; color: #bdc3c7;
+            cursor: pointer; color: #bdc3c7; padding: 5px;
         }
-        .modal-date-time { font-size: 14px; color: #7f8c8d; margin-bottom: 8px; font-weight: bold; }
-        .modal-desc { font-size: 18px; color: #2c3e50; margin-bottom: 20px; word-break: break-all; font-weight: bold; }
-        .modal-delete-btn {
-            width: 100%; padding: 12px; background-color: #e74c3c; color: white;
-            border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer;
+        .modal-header { font-size: 16px; color: #2c3e50; font-weight: bold; margin-bottom: 15px; margin-top: 0; }
+        .modal-btn-group { display: flex; gap: 10px; margin-top: 15px; }
+        .modal-btn {
+            flex: 1; padding: 12px; border: none; border-radius: 8px; font-size: 14px; 
+            font-weight: bold; cursor: pointer; color: white; transition: 0.2s;
         }
-        .modal-delete-btn:active { background-color: #c0392b; }
+        .btn-update { background-color: #2ecc71; }
+        .btn-update:active { background-color: #27ae60; transform: scale(0.98); }
+        .btn-delete { background-color: #e74c3c; }
+        .btn-delete:active { background-color: #c0392b; transform: scale(0.98); }
     </style>
 </head>
 <body>
@@ -94,19 +99,37 @@
         </div>
     </div>
 
-    <!-- 🌟 タスクの詳細を表示するポップアップ（モーダル） 🌟 -->
+    <!-- 🌟 詳細・編集ポップアップ 🌟 -->
     <div id="taskModal" class="modal-overlay">
         <div class="modal-content">
-            <span class="modal-close" onclick="closeModal()">✕</span>
-            <div class="modal-date-time" id="modalDateTime"></div>
-            <div class="modal-desc" id="modalDesc"></div>
-            <button class="modal-delete-btn" id="modalDeleteBtn">この記録を削除</button>
+            <span class="modal-close" id="closeModalBtn">✕</span>
+            <h3 class="modal-header">記録の編集</h3>
+            
+            <div class="form-group">
+                <label>時間</label>
+                <div class="time-inputs">
+                    <input type="time" id="editStartTime" required>
+                    <span>〜</span>
+                    <input type="time" id="editEndTime" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>内容</label>
+                <input type="text" id="editTaskDesc" required>
+            </div>
+
+            <div class="modal-btn-group">
+                <button class="modal-btn btn-update" id="updateBtn">更新する</button>
+                <button class="modal-btn btn-delete" id="deleteBtn">削除する</button>
+            </div>
         </div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, query, where } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        // ✅ updateDoc を追加でインポート
+        import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, query, where, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
         const firebaseConfig = {
           apiKey: "AIzaSyCht7krUKFIofiUXp04rArEQ18XBwJ7TUQ",
@@ -124,6 +147,9 @@
         let currentDisplayDate = '';
         let weekDates = [];
         let unsubscribe = null; 
+        
+        // 編集対象のIDを保持する変数
+        let currentEditingId = null;
 
         initDates();
         renderWeekNav();
@@ -200,7 +226,6 @@
 
         function loadRecordsFromCloud() {
             if (unsubscribe) unsubscribe();
-
             const q = query(collection(db, "records"), where("date", "==", currentDisplayDate));
             
             unsubscribe = onSnapshot(q, (snapshot) => {
@@ -208,58 +233,104 @@
                 snapshot.forEach((doc) => {
                     records.push({ id: doc.id, ...doc.data() }); 
                 });
-
                 renderTasks(records);
             });
         }
 
+        // 🌟アルゴリズム変更：タスクが重ならないように横幅を自動計算して並べる
         function renderTasks(records) {
             const taskLayer = document.getElementById('taskLayer');
             taskLayer.innerHTML = '';
-            let placedBlocks = [];
+            
+            // 時間順に並び替え
+            records.sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
+
+            // グループ（重なるタスクの塊）ごとに分ける
+            let clusters = [];
+            let currentCluster = [];
+            let currentClusterEnd = -1;
 
             records.forEach(record => {
-                const startMins = timeToMinutes(record.startTime);
-                const endMins = timeToMinutes(record.endTime);
-                const overlapping = placedBlocks.filter(b => startMins < b.endMins && endMins > b.startMins);
-                
-                let offset = 0;
-                if (overlapping.length > 0) offset = Math.max(...overlapping.map(b => b.offset)) + 1;
-                placedBlocks.push({ ...record, startMins, endMins, offset });
+                let start = timeToMinutes(record.startTime);
+                let end = timeToMinutes(record.endTime);
+                if (currentCluster.length === 0) {
+                    currentCluster.push(record);
+                    currentClusterEnd = end;
+                } else {
+                    if (start < currentClusterEnd) {
+                        currentCluster.push(record);
+                        currentClusterEnd = Math.max(currentClusterEnd, end);
+                    } else {
+                        clusters.push(currentCluster);
+                        currentCluster = [record];
+                        currentClusterEnd = end;
+                    }
+                }
             });
+            if (currentCluster.length > 0) clusters.push(currentCluster);
 
-            placedBlocks.forEach(block => {
-                const top = block.startMins * PIXELS_PER_MINUTE;
-                const height = (block.endMins - block.startMins) * PIXELS_PER_MINUTE;
-                const leftShift = block.offset * 15;
-                const zIndex = 10 + block.offset;
-                const colors = getTaskColors(block.taskDesc);
-                
-                const item = document.createElement('div');
-                item.className = 'task-block';
-                item.style.top = `${top}px`;
-                item.style.height = `${height}px`;
-                item.style.left = `calc(5px + ${leftShift}px)`;
-                item.style.width = `calc(100% - 10px - ${leftShift}px)`;
-                item.style.zIndex = zIndex;
-                item.style.backgroundColor = colors.bg;
-                item.style.color = colors.text;
-                item.style.borderLeftColor = colors.border;
-
-                item.innerHTML = `
-                    <div class="task-time">${block.startTime}〜${block.endTime}</div>
-                    <div class="task-title">${escapeHtml(block.taskDesc)}</div>
-                `;
-                
-                // ブロック全体をクリックしたときに詳細ポップアップを開く
-                item.addEventListener('click', () => {
-                    openModal(currentDisplayDate, block.startTime, block.endTime, block.taskDesc, block.id);
+            // 各グループ内でカラム（列）を割り当てる
+            clusters.forEach(cluster => {
+                let columns = [];
+                cluster.forEach(record => {
+                    let start = timeToMinutes(record.startTime);
+                    let end = timeToMinutes(record.endTime);
+                    let placed = false;
+                    for (let i = 0; i < columns.length; i++) {
+                        let colEnd = columns[i][columns[i].length - 1].endMins;
+                        if (colEnd <= start) {
+                            columns[i].push({...record, startMins: start, endMins: end, colIndex: i});
+                            placed = true;
+                            break;
+                        }
+                    }
+                    if (!placed) {
+                        columns.push([{...record, startMins: start, endMins: end, colIndex: columns.length}]);
+                    }
                 });
 
-                taskLayer.appendChild(item);
+                let numCols = columns.length;
+                
+                // ブロックの描画
+                columns.forEach(col => {
+                    col.forEach(block => {
+                        const top = block.startMins * PIXELS_PER_MINUTE;
+                        const height = (block.endMins - block.startMins) * PIXELS_PER_MINUTE;
+                        const widthPercent = 100 / numCols;
+                        const leftPercent = block.colIndex * widthPercent;
+                        const colors = getTaskColors(block.taskDesc);
+                        
+                        const item = document.createElement('div');
+                        item.className = 'task-block';
+                        item.style.top = `${top}px`;
+                        item.style.height = `${height}px`;
+                        
+                        // 重なり数に応じて幅と位置を設定
+                        item.style.width = `calc(${widthPercent}% - 4px)`;
+                        item.style.left = `calc(${leftPercent}% + 2px)`;
+                        item.style.zIndex = 10;
+                        
+                        item.style.backgroundColor = colors.bg;
+                        item.style.color = colors.text;
+                        item.style.borderLeftColor = colors.border;
+
+                        item.innerHTML = `
+                            <div class="task-time">${block.startTime}〜${block.endTime}</div>
+                            <div class="task-title">${escapeHtml(block.taskDesc)}</div>
+                        `;
+                        
+                        // ブロッククリック時にモーダルを開く
+                        item.addEventListener('click', () => {
+                            openModal(block);
+                        });
+
+                        taskLayer.appendChild(item);
+                    });
+                });
             });
         }
 
+        // 新規追加
         document.getElementById('addBtn').addEventListener('click', async () => {
             const startTime = document.getElementById('startTime').value;
             const endTime = document.getElementById('endTime').value;
@@ -281,47 +352,80 @@
                     endTime: endTime,
                     taskDesc: taskDesc
                 });
-
                 document.getElementById('startTime').value = endTime;
                 document.getElementById('endTime').value = '';
                 document.getElementById('taskDesc').value = '';
-
             } catch (e) {
-                console.error("エラーが発生しました: ", e);
-                alert("データの保存に失敗しました。");
+                alert("保存に失敗しました。");
             }
         });
 
-        // --- ポップアップ（モーダル）の制御処理 ---
+        // ==========================================
+        // 🌟 モーダル（編集・削除）の制御プログラム 🌟
+        // ==========================================
+        const modal = document.getElementById('taskModal');
+        
+        function openModal(block) {
+            currentEditingId = block.id;
+            // フォームに現在のデータを入れておく
+            document.getElementById('editStartTime').value = block.startTime;
+            document.getElementById('editEndTime').value = block.endTime;
+            document.getElementById('editTaskDesc').value = block.taskDesc;
+            modal.style.display = 'flex';
+        }
 
-        // モーダルを開く関数
-        function openModal(date, start, end, desc, docId) {
-            // 日付文字列を「YYYY/MM/DD」形式に少し見やすく整形
-            const formattedDate = date.replace(/-/g, '/');
-            
-            document.getElementById('modalDateTime').innerText = `${formattedDate} ${start} 〜 ${end}`;
-            document.getElementById('modalDesc').innerText = desc;
-            document.getElementById('taskModal').style.display = 'flex';
-            
-            // 削除ボタンのクリック処理を上書き設定
-            const delBtn = document.getElementById('modalDeleteBtn');
-            delBtn.onclick = async () => {
-                if (confirm('この記録を削除しますか？')) {
-                    await deleteDoc(doc(db, "records", docId));
-                    closeModal(); // 削除したらモーダルを閉じる
+        function closeModal() {
+            modal.style.display = 'none';
+            currentEditingId = null;
+        }
+
+        // 閉じるボタン（✕）
+        document.getElementById('closeModalBtn').addEventListener('click', closeModal);
+        
+        // 背景クリックで閉じる
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) closeModal();
+        });
+
+        // ✏️ 【更新ボタン】の処理
+        document.getElementById('updateBtn').addEventListener('click', async () => {
+            if (!currentEditingId) return;
+            const newStart = document.getElementById('editStartTime').value;
+            const newEnd = document.getElementById('editEndTime').value;
+            const newDesc = document.getElementById('editTaskDesc').value.trim();
+
+            if (!newStart || !newEnd || !newDesc) {
+                alert('すべての項目を入力してください。');
+                return;
+            }
+            if (timeToMinutes(newStart) >= timeToMinutes(newEnd)) {
+                alert('終了時間は開始時間よりも後の時間を指定してください。');
+                return;
+            }
+
+            try {
+                // Firebaseのデータを上書き更新
+                await updateDoc(doc(db, "records", currentEditingId), {
+                    startTime: newStart,
+                    endTime: newEnd,
+                    taskDesc: newDesc
+                });
+                closeModal(); // 成功したらポップアップを閉じる
+            } catch (error) {
+                alert('更新に失敗しました。');
+            }
+        });
+
+        // 🗑️ 【削除ボタン】の処理
+        document.getElementById('deleteBtn').addEventListener('click', async () => {
+            if (!currentEditingId) return;
+            if (confirm('この記録を削除しますか？')) {
+                try {
+                    await deleteDoc(doc(db, "records", currentEditingId));
+                    closeModal(); // 成功したらポップアップを閉じる
+                } catch (error) {
+                    alert('削除に失敗しました。');
                 }
-            };
-        }
-
-        // モーダルを閉じる関数（グローバルから呼べるようにwindowに登録）
-        window.closeModal = function() {
-            document.getElementById('taskModal').style.display = 'none';
-        }
-
-        // モーダルの背景（黒い半透明の部分）をタップしても閉じるようにする
-        document.getElementById('taskModal').addEventListener('click', (e) => {
-            if (e.target.id === 'taskModal') {
-                closeModal();
             }
         });
 
