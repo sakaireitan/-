@@ -30,10 +30,35 @@
         .time-grid-row { height: 60px; border-bottom: 1px solid #f0f0f0; display: flex; box-sizing: border-box; }
         .time-label { width: 50px; text-align: right; padding-right: 8px; color: #95a5a6; font-size: 11px; font-weight: bold; border-right: 1px solid #f0f0f0; background-color: #fbfcfc; transform: translateY(-6px); }
         .task-layer { position: absolute; top: 0; left: 50px; right: 0; bottom: 0; pointer-events: none; }
-        .task-block { position: absolute; border-radius: 6px; padding: 4px 8px; font-size: 12px; line-height: 1.3; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.15); border-left-width: 4px; border-left-style: solid; pointer-events: auto; transition: all 0.2s ease; }
+        
+        /* タスクブロック（タップ可能にするため cursor: pointer を追加） */
+        .task-block { position: absolute; border-radius: 6px; padding: 4px 8px; font-size: 12px; line-height: 1.3; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.15); border-left-width: 4px; border-left-style: solid; pointer-events: auto; transition: all 0.2s ease; cursor: pointer; }
+        .task-block:active { opacity: 0.7; }
         .task-time { font-size: 10px; font-weight: bold; opacity: 0.8; margin-bottom: 2px; }
         .task-title { font-weight: bold; word-break: break-all; }
-        .delete-btn { position: absolute; top: 2px; right: 4px; cursor: pointer; font-weight: bold; padding: 2px 5px; font-size: 14px; opacity: 0.7; background: rgba(255,255,255,0.3); border-radius: 4px; }
+
+        /* --- ポップアップ（モーダル）用のデザイン --- */
+        .modal-overlay {
+            display: none; /* 初期状態は非表示 */
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); z-index: 1000;
+            justify-content: center; align-items: center;
+        }
+        .modal-content {
+            background: #fff; padding: 20px; border-radius: 12px; width: 85%; max-width: 320px;
+            position: relative; box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+        .modal-close {
+            position: absolute; top: 12px; right: 15px; font-size: 20px; font-weight: bold;
+            cursor: pointer; color: #bdc3c7;
+        }
+        .modal-date-time { font-size: 14px; color: #7f8c8d; margin-bottom: 8px; font-weight: bold; }
+        .modal-desc { font-size: 18px; color: #2c3e50; margin-bottom: 20px; word-break: break-all; font-weight: bold; }
+        .modal-delete-btn {
+            width: 100%; padding: 12px; background-color: #e74c3c; color: white;
+            border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer;
+        }
+        .modal-delete-btn:active { background-color: #c0392b; }
     </style>
 </head>
 <body>
@@ -69,11 +94,20 @@
         </div>
     </div>
 
+    <!-- 🌟 タスクの詳細を表示するポップアップ（モーダル） 🌟 -->
+    <div id="taskModal" class="modal-overlay">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeModal()">✕</span>
+            <div class="modal-date-time" id="modalDateTime"></div>
+            <div class="modal-desc" id="modalDesc"></div>
+            <button class="modal-delete-btn" id="modalDeleteBtn">この記録を削除</button>
+        </div>
+    </div>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
         import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, query, where } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-        // Firebaseの設定情報を統合
         const firebaseConfig = {
           apiKey: "AIzaSyCht7krUKFIofiUXp04rArEQ18XBwJ7TUQ",
           authDomain: "actionlogger-53475.firebaseapp.com",
@@ -215,12 +249,11 @@
                 item.innerHTML = `
                     <div class="task-time">${block.startTime}〜${block.endTime}</div>
                     <div class="task-title">${escapeHtml(block.taskDesc)}</div>
-                    <span class="delete-btn" style="color: ${colors.text};" data-id="${block.id}">✕</span>
                 `;
                 
-                item.querySelector('.delete-btn').addEventListener('click', async (e) => {
-                    const docId = e.target.getAttribute('data-id');
-                    await deleteDoc(doc(db, "records", docId));
+                // ブロック全体をクリックしたときに詳細ポップアップを開く
+                item.addEventListener('click', () => {
+                    openModal(currentDisplayDate, block.startTime, block.endTime, block.taskDesc, block.id);
                 });
 
                 taskLayer.appendChild(item);
@@ -259,6 +292,40 @@
             }
         });
 
+        // --- ポップアップ（モーダル）の制御処理 ---
+
+        // モーダルを開く関数
+        function openModal(date, start, end, desc, docId) {
+            // 日付文字列を「YYYY/MM/DD」形式に少し見やすく整形
+            const formattedDate = date.replace(/-/g, '/');
+            
+            document.getElementById('modalDateTime').innerText = `${formattedDate} ${start} 〜 ${end}`;
+            document.getElementById('modalDesc').innerText = desc;
+            document.getElementById('taskModal').style.display = 'flex';
+            
+            // 削除ボタンのクリック処理を上書き設定
+            const delBtn = document.getElementById('modalDeleteBtn');
+            delBtn.onclick = async () => {
+                if (confirm('この記録を削除しますか？')) {
+                    await deleteDoc(doc(db, "records", docId));
+                    closeModal(); // 削除したらモーダルを閉じる
+                }
+            };
+        }
+
+        // モーダルを閉じる関数（グローバルから呼べるようにwindowに登録）
+        window.closeModal = function() {
+            document.getElementById('taskModal').style.display = 'none';
+        }
+
+        // モーダルの背景（黒い半透明の部分）をタップしても閉じるようにする
+        document.getElementById('taskModal').addEventListener('click', (e) => {
+            if (e.target.id === 'taskModal') {
+                closeModal();
+            }
+        });
+
+        // PWAのサービスワーカー登録
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('sw.js').catch(err => console.log('SW Registration failed', err));
