@@ -2,35 +2,113 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>行動記録アプリ</title>
     
-    <!-- PWA用の設定を追加 -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#3498db">
     <link rel="apple-touch-icon" href="icon-192.png">
 
     <style>
         * { box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #f4f7f6; margin: 0; padding: 15px; color: #333; max-width: 500px; margin: 0 auto; }
-        .form-container { background: #ffffff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        .form-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-        .form-header h2 { margin: 0; font-size: 18px; color: #2c3e50; }
-        .today-display { font-size: 13px; color: #7f8c8d; margin-bottom: 15px; font-weight: bold; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #f4f7f6; margin: 0; padding: 10px; color: #333; max-width: 500px; margin: 0 auto; }
+        
+        .form-container { background: #ffffff; padding: 15px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 15px; }
+        .form-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .form-header h2 { margin: 0; font-size: 16px; color: #2c3e50; }
         .clear-btn { background: none; border: none; color: #e74c3c; font-size: 12px; cursor: pointer; text-decoration: underline; }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 13px; color: #555; }
-        .time-inputs { display: flex; align-items: center; gap: 10px; }
-        input[type="time"], input[type="text"] { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; background-color: #fafafa; }
-        button.submit-btn { width: 100%; padding: 14px; background-color: #3498db; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; touch-action: manipulation; }
+        
+        .form-group { margin-bottom: 12px; }
+        label { display: block; margin-bottom: 4px; font-weight: bold; font-size: 12px; color: #555; }
+        .time-inputs { display: flex; align-items: center; gap: 8px; }
+        input[type="time"], input[type="text"] { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; background-color: #fafafa; }
+        
+        button.submit-btn { width: 100%; padding: 12px; background-color: #3498db; color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; }
         button.submit-btn:active { background-color: #2980b9; }
-        .schedule-container { background: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); overflow: hidden; margin-bottom: 30px; }
-        .hour-block { display: flex; border-bottom: 1px solid #f0f0f0; min-height: 52px; }
-        .hour-block:last-child { border-bottom: none; }
-        .time-label { width: 55px; padding: 10px 5px; font-size: 12px; color: #7f8c8d; background-color: #f9fbfb; border-right: 1px solid #f0f0f0; text-align: right; font-weight: bold; }
-        .task-area { flex-grow: 1; padding: 6px 10px; display: flex; flex-direction: column; gap: 6px; justify-content: center; }
-        .task-item { padding: 8px 10px; border-radius: 6px; font-size: 13px; display: flex; justify-content: space-between; align-items: center; word-break: break-all; border-left-width: 4px; border-left-style: solid; }
-        .delete-btn { cursor: pointer; font-weight: bold; padding: 2px 6px; margin-left: 5px; opacity: 0.7; }
+
+        /* 過去1週間の日付ナビゲーション */
+        .week-nav { display: flex; overflow-x: auto; gap: 8px; margin-bottom: 15px; padding-bottom: 5px; scrollbar-width: none; }
+        .week-nav::-webkit-scrollbar { display: none; }
+        .date-btn { flex-shrink: 0; padding: 8px 12px; border-radius: 20px; border: 1px solid #ddd; background: #fff; font-size: 13px; font-weight: bold; cursor: pointer; color: #555; }
+        .date-btn.active { background: #3498db; color: #fff; border-color: #3498db; }
+
+        /* タイムラインのエリア */
+        .timeline-wrapper {
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            height: 50vh; /* 画面の半分の高さでスクロールさせる */
+            min-height: 400px;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .timeline-container {
+            position: relative;
+            height: 1440px; /* 1時間60px × 24時間 */
+            background: #fff;
+        }
+
+        /* 1時間ごとの背景の線 */
+        .time-grid-row {
+            height: 60px;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            box-sizing: border-box;
+        }
+        .time-label {
+            width: 50px;
+            text-align: right;
+            padding-right: 8px;
+            color: #95a5a6;
+            font-size: 11px;
+            font-weight: bold;
+            border-right: 1px solid #f0f0f0;
+            background-color: #fbfcfc;
+            /* 数字が線の中央に来るように調整 */
+            transform: translateY(-6px); 
+        }
+
+        /* タスクを配置するレイヤー */
+        .task-layer {
+            position: absolute;
+            top: 0;
+            left: 50px; /* 時間ラベルの幅を避ける */
+            right: 0;
+            bottom: 0;
+            pointer-events: none; /* 下のスクロールを阻害しない */
+        }
+
+        /* 個別のタスクブロック */
+        .task-block {
+            position: absolute;
+            border-radius: 6px;
+            padding: 4px 8px;
+            font-size: 12px;
+            line-height: 1.3;
+            overflow: hidden;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+            border-left-width: 4px;
+            border-left-style: solid;
+            pointer-events: auto; /* タップ可能に */
+            transition: all 0.2s ease;
+        }
+
+        .task-time { font-size: 10px; font-weight: bold; opacity: 0.8; margin-bottom: 2px; }
+        .task-title { font-weight: bold; word-break: break-all; }
+        
+        .delete-btn {
+            position: absolute;
+            top: 2px;
+            right: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            padding: 2px 5px;
+            font-size: 14px;
+            opacity: 0.7;
+            background: rgba(255,255,255,0.3);
+            border-radius: 4px;
+        }
     </style>
 </head>
 <body>
@@ -38,9 +116,8 @@
     <div class="form-container">
         <div class="form-header">
             <h2>行動を記録</h2>
-            <button class="clear-btn" onclick="clearAllData()">全消去</button>
+            <button class="clear-btn" onclick="clearAllData()">全データを消去</button>
         </div>
-        <div class="today-display" id="todayDisplay"></div>
         
         <div class="form-group">
             <label>時間（開始 〜 終了）</label>
@@ -59,43 +136,84 @@
         <button class="submit-btn" onclick="addRecord()">記録する</button>
     </div>
 
-    <div class="schedule-container" id="schedule"></div>
+    <!-- 過去1週間を選択するナビゲーション -->
+    <div class="week-nav" id="weekNav"></div>
+
+    <!-- タイムライン表示エリア -->
+    <div class="timeline-wrapper" id="timelineWrapper">
+        <div class="timeline-container" id="timeline">
+            <!-- ここに背景の罫線が入る -->
+            <div id="gridBg"></div>
+            <!-- ここにタスクのブロックが計算されて配置される -->
+            <div id="taskLayer" class="task-layer"></div>
+        </div>
+    </div>
 
     <script>
-        const STORAGE_KEY = 'my_action_logger_records_v3';
+        // データの持ち方を変更したためキーをv4に変更
+        const STORAGE_KEY = 'my_action_logger_records_v4';
+        const PIXELS_PER_MINUTE = 1; // 1時間 = 60px に設定
+
+        let currentDisplayDate = ''; // 現在表示している日付（YYYY-MM-DD）
+        let weekDates = []; // 過去7日間の日付データ
 
         window.addEventListener('DOMContentLoaded', () => {
-            showToday();
+            initDates();
+            renderWeekNav();
             createScheduleGrid();
             loadRecords();
             setDefaultTime();
+            scrollToCurrentTime();
         });
 
-        function getFormattedDate(date = new Date()) {
-            const year = date.getFullYear();
-            const month = date.getMonth() + 1;
-            const day = date.getDate();
-            return `${year}年${month}月${day}日`;
+        // 過去7日間の日付を初期化
+        function initDates() {
+            for (let i = 6; i >= 0; i--) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                weekDates.push({
+                    str: dateStr,
+                    label: i === 0 ? '今日' : `${d.getMonth() + 1}/${d.getDate()}`
+                });
+            }
+            // 初期表示は「今日」
+            currentDisplayDate = weekDates[weekDates.length - 1].str;
         }
 
-        function showToday() {
-            document.getElementById('todayDisplay').innerText = `日付：${getFormattedDate()}`;
+        // 日付ボタンの描画
+        function renderWeekNav() {
+            const nav = document.getElementById('weekNav');
+            nav.innerHTML = '';
+            weekDates.forEach(dateObj => {
+                const btn = document.createElement('button');
+                btn.className = `date-btn ${dateObj.str === currentDisplayDate ? 'active' : ''}`;
+                btn.innerText = dateObj.label;
+                btn.onclick = () => {
+                    currentDisplayDate = dateObj.str;
+                    renderWeekNav(); // ボタンの色を更新
+                    loadRecords();   // 選択した日のデータを読み込み
+                };
+                nav.appendChild(btn);
+            });
+            // 最新の日付（右端）までスクロールを寄せる
+            nav.scrollLeft = nav.scrollWidth;
         }
 
+        // タイムラインの背景（0:00〜23:00）の罫線を引く
         function createScheduleGrid() {
-            const container = document.getElementById('schedule');
-            container.innerHTML = '';
+            const bgContainer = document.getElementById('gridBg');
+            bgContainer.innerHTML = '';
             for (let i = 0; i < 24; i++) {
-                const hourBlock = document.createElement('div');
-                hourBlock.className = 'hour-block';
-                hourBlock.innerHTML = `
-                    <div class="time-label">${i}:00</div>
-                    <div class="task-area" id="hour-${i}"></div>
-                `;
-                container.appendChild(hourBlock);
+                const row = document.createElement('div');
+                row.className = 'time-grid-row';
+                // 最初（0:00）だけラベルを空白にしてスッキリさせる
+                row.innerHTML = `<div class="time-label">${i === 0 ? '' : i + ':00'}</div>`;
+                bgContainer.appendChild(row);
             }
         }
 
+        // 現在時刻をデフォルトセット
         function setDefaultTime() {
             const now = new Date();
             const hours = String(now.getHours()).padStart(2, '0');
@@ -103,6 +221,24 @@
             document.getElementById('startTime').value = `${hours}:${minutes}`;
         }
 
+        // 画面読み込み時に、現在の時刻付近へ自動スクロールする
+        function scrollToCurrentTime() {
+            const wrapper = document.getElementById('timelineWrapper');
+            const now = new Date();
+            // 現在時刻の1時間分くらい上を基準にスクロール
+            const targetY = (now.getHours() * 60) - 60; 
+            if(wrapper) {
+                wrapper.scrollTop = Math.max(0, targetY);
+            }
+        }
+
+        // 時間の文字列("16:30")を「0時からの合計分数(990)」に変換
+        function timeToMinutes(timeStr) {
+            const parts = timeStr.split(':');
+            return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+        }
+
+        // タスクごとの色を算出（変更なし）
         function getTaskColors(str) {
             let hash = 0;
             for (let i = 0; i < str.length; i++) {
@@ -111,38 +247,77 @@
             const hue = Math.abs(hash) % 360;
             return {
                 bg: `hsl(${hue}, 85%, 92%)`,
-                text: `hsl(${hue}, 70%, 30%)`,
+                text: `hsl(${hue}, 70%, 25%)`,
                 border: `hsl(${hue}, 70%, 55%)`
             };
         }
 
+        // データの読み込みとブロックの配置（ここが一番重要な改修）
         function loadRecords() {
             const saved = localStorage.getItem(STORAGE_KEY);
-            const records = saved ? JSON.parse(saved) : [];
+            let records = saved ? JSON.parse(saved) : [];
             
-            for (let i = 0; i < 24; i++) {
-                document.getElementById(`hour-${i}`).innerHTML = '';
-            }
+            // 現在選択されている日付のデータだけを抽出
+            let todayRecords = records.filter(r => r.date === currentDisplayDate);
 
-            records.forEach((record, index) => {
-                const startHour = parseInt(record.startTime.split(':')[0], 10);
-                const targetArea = document.getElementById(`hour-${startHour}`);
-                if (targetArea) {
-                    const colors = getTaskColors(record.taskDesc);
-                    const item = document.createElement('div');
-                    item.className = 'task-item';
-                    item.style.backgroundColor = colors.bg;
-                    item.style.color = colors.text;
-                    item.style.borderLeftColor = colors.border;
-                    item.innerHTML = `
-                        <span><strong>${record.startTime}〜${record.endTime}</strong> <span style="font-size:11px; opacity:0.8;">[${record.date}]</span> ${escapeHtml(record.taskDesc)}</span>
-                        <span class="delete-btn" style="color: ${colors.text};" onclick="deleteRecord(${index})">✕</span>
-                    `;
-                    targetArea.appendChild(item);
+            // タスクエリアをクリア
+            const taskLayer = document.getElementById('taskLayer');
+            taskLayer.innerHTML = '';
+
+            let placedBlocks = [];
+
+            // 登録された順番で配置していく
+            todayRecords.forEach(record => {
+                const startMins = timeToMinutes(record.startTime);
+                const endMins = timeToMinutes(record.endTime);
+                
+                // 既に配置済みのタスクと時間が重なっているかを判定
+                const overlapping = placedBlocks.filter(b => startMins < b.endMins && endMins > b.startMins);
+                
+                // 重なっている場合、右にどれくらいズラすか（オフセット）を計算
+                let offset = 0;
+                if (overlapping.length > 0) {
+                    offset = Math.max(...overlapping.map(b => b.offset)) + 1;
                 }
+                
+                // 配置済みリストに追加
+                placedBlocks.push({ ...record, startMins, endMins, offset });
+            });
+
+            // 実際にHTMLを生成して配置
+            placedBlocks.forEach(block => {
+                const top = block.startMins * PIXELS_PER_MINUTE;
+                const height = (block.endMins - block.startMins) * PIXELS_PER_MINUTE;
+                
+                // オフセット値に基づいて、後から追加されたものを右にズラし、上に重ねる
+                const leftShift = block.offset * 15; // 15pxずつ右にズラす
+                const zIndex = 10 + block.offset;    // 重なり順（Z-index）を高くする
+
+                const colors = getTaskColors(block.taskDesc);
+                
+                const item = document.createElement('div');
+                item.className = 'task-block';
+                item.style.top = `${top}px`;
+                item.style.height = `${height}px`;
+                // 重なりに応じて幅を調整
+                item.style.left = `calc(5px + ${leftShift}px)`;
+                item.style.width = `calc(100% - 10px - ${leftShift}px)`;
+                item.style.zIndex = zIndex;
+                
+                item.style.backgroundColor = colors.bg;
+                item.style.color = colors.text;
+                item.style.borderLeftColor = colors.border;
+
+                item.innerHTML = `
+                    <div class="task-time">${block.startTime}〜${block.endTime}</div>
+                    <div class="task-title">${escapeHtml(block.taskDesc)}</div>
+                    <span class="delete-btn" style="color: ${colors.text};" onclick="deleteRecord(${block.id})">✕</span>
+                `;
+                taskLayer.appendChild(item);
             });
         }
 
+        // 記録の追加
         function addRecord() {
             const startTime = document.getElementById('startTime').value;
             const endTime = document.getElementById('endTime').value;
@@ -153,13 +328,26 @@
                 return;
             }
 
-            const dateStr = getFormattedDate();
+            // バリデーション：終了時間が開始時間より前になっていないかチェック
+            if (timeToMinutes(startTime) >= timeToMinutes(endTime)) {
+                alert('終了時間は開始時間よりも後の時間を指定してください。');
+                return;
+            }
+
             const saved = localStorage.getItem(STORAGE_KEY);
             const records = saved ? JSON.parse(saved) : [];
 
-            records.push({ date: dateStr, startTime, endTime, taskDesc });
+            // 固有のIDを付けて保存
+            records.push({ 
+                id: Date.now(), 
+                date: currentDisplayDate, // 現在選択している日付に記録
+                startTime, 
+                endTime, 
+                taskDesc 
+            });
             localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
 
+            // 次の入力を楽にするため、終了時間を次の開始時間にセット
             document.getElementById('startTime').value = endTime;
             document.getElementById('endTime').value = '';
             document.getElementById('taskDesc').value = '';
@@ -167,17 +355,18 @@
             loadRecords();
         }
 
-        function deleteRecord(index) {
+        // タスクの削除（IDで検索して削除）
+        function deleteRecord(id) {
             const saved = localStorage.getItem(STORAGE_KEY);
             if (!saved) return;
             let records = JSON.parse(saved);
-            records.splice(index, 1);
+            records = records.filter(r => r.id !== id);
             localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
             loadRecords();
         }
 
         function clearAllData() {
-            if (confirm('すべての記録を消去しますか？')) {
+            if (confirm('保存されているすべての記録を消去しますか？')) {
                 localStorage.removeItem(STORAGE_KEY);
                 loadRecords();
             }
@@ -187,16 +376,10 @@
             return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         }
 
-        // --- ここからPWA用のサービスワーカー登録処理 ---
+        // --- PWAのサービスワーカー登録 ---
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js')
-                .then(registration => {
-                    console.log('ServiceWorker 登録成功', registration.scope);
-                })
-                .catch(err => {
-                    console.log('ServiceWorker 登録失敗', err);
-                });
+                navigator.serviceWorker.register('sw.js').catch(err => console.log('SW Registration failed', err));
             });
         }
     </script>
